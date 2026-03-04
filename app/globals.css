@@ -98,6 +98,7 @@ label {
 
 input,
 textarea,
+select,
 button {
   width: 100%;
   border-radius: 8px;
@@ -111,6 +112,23 @@ button {
   cursor: pointer;
   background: #111827;
   color: #fff;
+}
+
+.formGrid2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.actionsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.actionsRow button {
+  width: auto;
+  margin-bottom: 0;
 }
 
 .buttonLink {
@@ -144,6 +162,10 @@ button {
 .compact {
   margin-top: 0.6rem;
   font-size: 0.9rem;
+}
+
+.inlineList {
+  padding-left: 1rem;
 }
 
 pre {

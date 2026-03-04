@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { ADMIN_COOKIE_NAME } from "@/lib/auth/admin";
 
 const protectedPrefixes = ["/clients", "/auctions", "/settings"];
-const protectedApiPrefixes = ["/api/import", "/api/oauth/reddit/start", "/api/clients"];
+const protectedApiPrefixes = ["/api/import", "/api/oauth/reddit/start", "/api/clients", "/api/auctions"];
 
 function isProtectedPath(pathname: string) {
   return (
@@ -38,5 +38,6 @@ export const config = {
     "/api/import",
     "/api/oauth/reddit/start",
     "/api/clients/:path*",
+    "/api/auctions/:path*",
   ],
 };
