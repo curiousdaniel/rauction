@@ -22,6 +22,52 @@ function extractTermsText(html: string) {
   return termsBlock ? stripHtmlTags(termsBlock) : "";
 }
 
+function decodeBasicEntities(value: string) {
+  return value
+    .replace(/&#039;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
+function extractAuctionIdFromUrl(url: URL) {
+  const path = url.pathname.toLowerCase();
+  const match = path.match(/-(\d+)\/bidgallery\/?$/i);
+  return match?.[1] ?? "";
+}
+
+async function fetchJson(url: string) {
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "User-Agent": "auctionmethod-r-auction-poc/0.1 importer",
+      Accept: "application/json",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`GET ${url} failed with status ${response.status}`);
+  }
+  return (await response.json()) as LooseRecord;
+}
+
+async function postFormJson(url: string, form: Record<string, string>) {
+  const body = new URLSearchParams(form);
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "User-Agent": "auctionmethod-r-auction-poc/0.1 importer",
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "application/json",
+    },
+    body,
+  });
+  if (!response.ok) {
+    throw new Error(`POST ${url} failed with status ${response.status}`);
+  }
+  return (await response.json()) as LooseRecord;
+}
+
 function parseJsonScripts(html: string) {
   const blocks: unknown[] = [];
   const regex = /<script[^>]*>([\s\S]*?)<\/script>/gi;
@@ -168,6 +214,108 @@ function inferBidDates(termsText: string, bodyText: string) {
   };
 }
 
+function normalizeApiDate(raw: unknown) {
+  if (typeof raw !== "string" || !raw.trim()) return "";
+  const parsed = new Date(raw);
+  if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
+
+  return parseUsDateTimeToIso(raw);
+}
+
+async function tryAuctionMethodApiImport(url: URL) {
+  const auctionId = extractAuctionIdFromUrl(url);
+  if (!auctionId) return null;
+
+  const apiBase = `${url.origin}/api`;
+  const auctionPayload = await fetchJson(`${apiBase}/auctions/${auctionId}`);
+  const data = (auctionPayload.data ?? {}) as LooseRecord;
+  if (!data || typeof data !== "object") return null;
+
+  const itemsPayload = await postFormJson(`${apiBase}/getitems`, { auction_id: auctionId });
+  const items = Array.isArray(itemsPayload.items) ? (itemsPayload.items as LooseRecord[]) : [];
+
+  const imageSet = new Set<string>();
+  for (const item of items) {
+    const images = Array.isArray(item.images) ? (item.images as LooseRecord[]) : [];
+    for (const img of images) {
+      const imageUrl = typeof img.image_url === "string" ? img.image_url : null;
+      const thumbUrl = typeof img.thumb_url === "string" ? img.thumb_url : null;
+      if (imageUrl) imageSet.add(imageUrl);
+      if (thumbUrl) imageSet.add(thumbUrl);
+      if (imageSet.size >= 12) break;
+    }
+    const fallbackThumb = typeof item.thumb_url === "string" ? item.thumb_url : null;
+    if (fallbackThumb) imageSet.add(fallbackThumb);
+    if (imageSet.size >= 12) break;
+  }
+
+  const titleRaw = typeof data.title === "string" ? data.title : "";
+  const introRaw =
+    typeof data.intro === "string"
+      ? data.intro
+      : typeof data.description === "string"
+        ? data.description
+        : "";
+  const termsRaw = typeof data.terms === "string" ? stripHtmlTags(data.terms) : "";
+  const removalRaw = typeof data.removal_info === "string" ? stripHtmlTags(data.removal_info) : "";
+  const description = stripHtmlTags(introRaw) || stripHtmlTags(typeof data.description === "string" ? data.description : "");
+  const city = typeof data.city === "string" ? data.city.trim() : "";
+  const region =
+    typeof data.state_abbreviation === "string"
+      ? data.state_abbreviation.trim().toUpperCase()
+      : typeof data.foreign_state === "string"
+        ? data.foreign_state.trim()
+        : "";
+  const startAt = normalizeApiDate(data.starts) || normalizeApiDate(data.start_time_display);
+  const endAt = normalizeApiDate(data.ends) || normalizeApiDate(data.end_time_display);
+
+  const warnings: string[] = [];
+  let confidence = 92;
+  if (!city || !region) {
+    confidence -= 15;
+    warnings.push("Location was missing in API response.");
+  }
+  if (!startAt) {
+    confidence -= 10;
+    warnings.push("Start date was missing in API response.");
+  }
+  if (!endAt) {
+    confidence -= 10;
+    warnings.push("End date was missing in API response.");
+  }
+
+  const imageUrls = Array.from(imageSet).slice(0, 8);
+  if (imageUrls.length < 3) {
+    confidence -= 12;
+    warnings.push("Fewer than 3 lot images were returned by auction API.");
+  }
+
+  const fullDescription = [description, termsRaw, removalRaw].filter(Boolean).join("\n\n");
+
+  return {
+    provider: "auctionMethodBidGalleryApi",
+    confidence: Math.max(20, confidence),
+    warnings,
+    data: {
+      title: decodeBasicEntities(titleRaw),
+      description: decodeBasicEntities(fullDescription),
+      auctionUrl: url.toString(),
+      moreInfoUrl: url.toString(),
+      auctionType: "ONLINE" as const,
+      locationCity: decodeBasicEntities(city),
+      locationRegion: decodeBasicEntities(region),
+      startAt,
+      endAt,
+      imageUrls,
+    },
+    debug: {
+      auctionId,
+      itemsCount: items.length,
+      imageCount: imageUrls.length,
+    },
+  };
+}
+
 export const auctionMethodBidGalleryImporter: Importer = {
   id: "auctionmethod-bidgallery",
   canHandle(url, html) {
@@ -178,6 +326,15 @@ export const auctionMethodBidGalleryImporter: Importer = {
     );
   },
   async parse(url, html): Promise<ImportResult> {
+    try {
+      const apiResult = await tryAuctionMethodApiImport(url);
+      if (apiResult) {
+        return apiResult;
+      }
+    } catch {
+      // Continue with HTML heuristics if direct API extraction fails.
+    }
+
     const warnings: string[] = [];
     const title =
       firstMatch(html, /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i) ||
