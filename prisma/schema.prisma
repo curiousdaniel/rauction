@@ -1,0 +1,94 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AuctionType {
+  ONLINE
+  LIVE
+}
+
+enum AuctionStatus {
+  DRAFT
+  QUEUED
+  PROCESSING
+  POSTED
+  FAILED
+  CANCELLED
+}
+
+model Client {
+  id                    String    @id @default(cuid())
+  name                  String
+  contactEmail          String?
+  notes                 String?
+  redditUsername        String?
+  redditUserId          String?
+  redditRefreshTokenEnc String?
+  redditScope           String?
+  redditTokenUpdatedAt  DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  auctions              Auction[]
+  oauthStates           OAuthState[]
+}
+
+model Auction {
+  id              String        @id @default(cuid())
+  clientId        String
+  client          Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  sourceUrl       String?
+  auctionUrl      String
+  moreInfoUrl     String?
+  title           String
+  description     String
+  auctionType     AuctionType
+  startAt         DateTime
+  endAt           DateTime?
+  timezone        String        @default("America/Los_Angeles")
+  locationCity    String
+  locationRegion  String
+  locationCountry String?       @default("US")
+  imageUrls       String[]
+  featuredItems   String[]
+  scheduledAt     DateTime?
+  status          AuctionStatus @default(DRAFT)
+  redditPostId    String?
+  redditPostUrl   String?
+  postedAt        DateTime?
+  lastError       String?
+  attemptCount    Int           @default(0)
+  lastAttemptAt   DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([status, scheduledAt])
+  @@index([clientId])
+}
+
+model ImportRun {
+  id         String   @id @default(cuid())
+  sourceUrl  String
+  provider   String?
+  confidence Int?
+  warnings   String[]
+  extracted  Json?
+  createdAt  DateTime @default(now())
+}
+
+model OAuthState {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  state     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([clientId, createdAt])
+  @@index([state, usedAt, expiresAt])
+}
