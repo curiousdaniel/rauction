@@ -8,7 +8,7 @@ export default function SettingsPage() {
       <div className="card">
         <h2>Required env vars</h2>
         <p>
-          DATABASE_URL, REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET, REDDIT_REDIRECT_URI, REDDIT_USER_AGENT,
+          POSTGRES_PRISMA_URL, REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET, REDDIT_REDIRECT_URI, REDDIT_USER_AGENT,
           ADMIN_PASSWORD, TOKEN_ENCRYPTION_KEY, CRON_TOKEN.
         </p>
       </div>
