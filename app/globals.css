@@ -168,6 +168,57 @@ button {
   padding-left: 1rem;
 }
 
+.modeSwitch {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.tabButton {
+  width: auto;
+  margin-bottom: 0;
+  background: #f3f4f6;
+  color: #111827;
+  border: 1px solid var(--border);
+}
+
+.activeTab {
+  background: #111827;
+  color: #ffffff;
+}
+
+.importPanel {
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.importRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.importRow input {
+  margin-bottom: 0;
+}
+
+.importRow button {
+  width: auto;
+  margin-bottom: 0;
+}
+
+.importMeta {
+  margin-top: 8px;
+  font-size: 0.95rem;
+}
+
+.errorText {
+  margin-top: 8px;
+  color: #b91c1c;
+}
+
 pre {
   margin-top: 0.6rem;
   background: #0f172a;
