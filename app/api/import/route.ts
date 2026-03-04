@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { rewriteAuctionCopy } from "@/lib/openai/auctionRewrite";
 import { prisma } from "@/lib/prisma";
 import { runAuctionImport } from "@/lib/importers";
 
@@ -80,6 +81,36 @@ export async function POST(request: Request) {
     if (importWarnings.length > 0) {
       result.warnings = [...importWarnings, ...result.warnings];
       result.confidence = Math.max(10, result.confidence - 10);
+    }
+
+    try {
+      if (result.data.auctionUrl && result.data.locationCity && result.data.locationRegion) {
+        const rewrite = await rewriteAuctionCopy({
+          auctionType: result.data.auctionType ?? "ONLINE",
+          startAt: result.data.startAt ?? null,
+          endAt: result.data.endAt ?? null,
+          timezone: "America/Los_Angeles",
+          locationCity: result.data.locationCity,
+          locationRegion: result.data.locationRegion,
+          locationCountry: "US",
+          auctionUrl: result.data.auctionUrl,
+          moreInfoUrl: result.data.moreInfoUrl ?? null,
+          imageUrls: result.data.imageUrls ?? [],
+          featuredItems: [],
+          rawTitle: result.data.title ?? null,
+          rawDescription: result.data.description ?? null,
+          sourceUrl: targetUrl.toString(),
+        });
+
+        result.data.title = rewrite.title;
+        result.data.description = rewrite.description;
+        if (rewrite.notes.length > 0) {
+          result.warnings = [...rewrite.notes, ...result.warnings];
+        }
+      }
+    } catch (rewriteError) {
+      const message = rewriteError instanceof Error ? rewriteError.message : "Unknown rewrite error";
+      result.warnings = [`Rewrite step skipped: ${message}`, ...result.warnings];
     }
 
     await prisma.importRun.create({
