@@ -2,7 +2,7 @@
   "buildCommand": "npm run build:vercel",
   "crons": [
     {
-      "path": "/api/cron/post-due/YOUR_CRON_TOKEN",
+      "path": "/api/cron/post-due",
       "schedule": "*/5 * * * *"
     }
   ]
