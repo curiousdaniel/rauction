@@ -31,6 +31,10 @@ function decodeBasicEntities(value: string) {
     .replace(/&gt;/g, ">");
 }
 
+function isThumbnailImage(url: string) {
+  return /_t\.(?:jpg|jpeg|png|webp)(?:\?|$)/i.test(url);
+}
+
 function extractAuctionIdFromUrl(url: URL) {
   const path = url.pathname.toLowerCase();
   const match = path.match(/-(\d+)\/bidgallery\/?$/i);
@@ -110,6 +114,7 @@ function extractLikelyImages(html: string) {
   for (const match of html.matchAll(lotImageRegex)) {
     const url = match[1]?.trim();
     if (!url) continue;
+    if (isThumbnailImage(url)) continue;
     images.add(url);
     if (images.size >= 10) break;
   }
@@ -124,6 +129,7 @@ function extractLikelyImages(html: string) {
     const candidate = match[0];
     if (!candidate) continue;
     const lowered = candidate.toLowerCase();
+    if (isThumbnailImage(candidate)) continue;
     if (lowered.includes("/auxiliary/")) continue;
     if (lowered.includes("logo")) continue;
     if (lowered.includes("icon")) continue;
@@ -137,7 +143,10 @@ function extractLikelyImages(html: string) {
 
   const ogRegex = /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["'][^>]*>/gi;
   for (const match of html.matchAll(ogRegex)) {
-    if (match[1]) images.add(match[1]);
+    const candidate = match[1];
+    if (!candidate) continue;
+    if (isThumbnailImage(candidate)) continue;
+    images.add(candidate);
   }
 
   return Array.from(images).slice(0, 6);
@@ -239,13 +248,9 @@ async function tryAuctionMethodApiImport(url: URL) {
     const images = Array.isArray(item.images) ? (item.images as LooseRecord[]) : [];
     for (const img of images) {
       const imageUrl = typeof img.image_url === "string" ? img.image_url : null;
-      const thumbUrl = typeof img.thumb_url === "string" ? img.thumb_url : null;
-      if (imageUrl) imageSet.add(imageUrl);
-      if (thumbUrl) imageSet.add(thumbUrl);
+      if (imageUrl && !isThumbnailImage(imageUrl)) imageSet.add(imageUrl);
       if (imageSet.size >= 12) break;
     }
-    const fallbackThumb = typeof item.thumb_url === "string" ? item.thumb_url : null;
-    if (fallbackThumb) imageSet.add(fallbackThumb);
     if (imageSet.size >= 12) break;
   }
 

@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   }
 
   const endAt = parseDateOrNull(endAtRaw);
-  const scheduledAt = parseDateOrNull(scheduledAtRaw);
+  let scheduledAt = parseDateOrNull(scheduledAtRaw);
   const imageUrls = splitLines(imageUrlsRaw);
   const featuredItems = splitLines(featuredItemsRaw);
 
@@ -67,6 +67,11 @@ export async function POST(request: Request) {
 
     if (!check.isValid) {
       return NextResponse.redirect(new URL(`/auctions/new?error=${encodeURIComponent(check.errors[0])}`, request.url), 303);
+    }
+
+    if (!scheduledAt && auctionType === AuctionType.ONLINE) {
+      // For online auctions, default post timing to auction start when no manual schedule is provided.
+      scheduledAt = startAt;
     }
 
     if (!scheduledAt) {

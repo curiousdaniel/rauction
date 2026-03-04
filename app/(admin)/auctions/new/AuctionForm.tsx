@@ -222,7 +222,7 @@ export function AuctionForm({ clients }: { clients: ClientOption[] }) {
           </select>
         </div>
         <div>
-          <label htmlFor="scheduledAt">Scheduled At (UTC/local browser time)</label>
+          <label htmlFor="scheduledAt">Scheduled At (optional for ONLINE)</label>
           <input
             id="scheduledAt"
             name="scheduledAt"

@@ -11,7 +11,7 @@ function decodeError(errorCode: string) {
   const known: Record<string, string> = {
     "missing-client": "Please choose a client before saving.",
     "invalid-startAt": "Start date/time is required and must be valid.",
-    "missing-scheduledAt": "Scheduled date/time is required for Save and Queue.",
+    "missing-scheduledAt": "Scheduled date/time is required for LIVE auctions when queueing.",
   };
   return known[errorCode] ?? errorCode;
 }
