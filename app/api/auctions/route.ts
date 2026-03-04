@@ -36,13 +36,13 @@ export async function POST(request: Request) {
   const featuredItemsRaw = String(form.get("featuredItems") ?? "");
 
   if (!clientId) {
-    return NextResponse.redirect(new URL("/auctions/new?error=missing-client", request.url));
+    return NextResponse.redirect(new URL("/auctions/new?error=missing-client", request.url), 303);
   }
 
   const auctionType = auctionTypeRaw === "LIVE" ? AuctionType.LIVE : AuctionType.ONLINE;
   const startAt = parseDateOrNull(startAtRaw);
   if (!startAt) {
-    return NextResponse.redirect(new URL("/auctions/new?error=invalid-startAt", request.url));
+    return NextResponse.redirect(new URL("/auctions/new?error=invalid-startAt", request.url), 303);
   }
 
   const endAt = parseDateOrNull(endAtRaw);
@@ -66,11 +66,11 @@ export async function POST(request: Request) {
     });
 
     if (!check.isValid) {
-      return NextResponse.redirect(new URL(`/auctions/new?error=${encodeURIComponent(check.errors[0])}`, request.url));
+      return NextResponse.redirect(new URL(`/auctions/new?error=${encodeURIComponent(check.errors[0])}`, request.url), 303);
     }
 
     if (!scheduledAt) {
-      return NextResponse.redirect(new URL("/auctions/new?error=missing-scheduledAt", request.url));
+      return NextResponse.redirect(new URL("/auctions/new?error=missing-scheduledAt", request.url), 303);
     }
 
     status = AuctionStatus.QUEUED;
@@ -96,5 +96,5 @@ export async function POST(request: Request) {
     },
   });
 
-  return NextResponse.redirect(new URL(`/auctions/${created.id}`, request.url));
+  return NextResponse.redirect(new URL(`/auctions/${created.id}`, request.url), 303);
 }

@@ -219,6 +219,19 @@ button {
   color: #b91c1c;
 }
 
+.alert {
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border: 1px solid;
+}
+
+.errorAlert {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
 pre {
   margin-top: 0.6rem;
   background: #0f172a;
