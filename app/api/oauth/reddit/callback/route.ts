@@ -9,6 +9,13 @@ import {
   markOAuthStateUsed,
 } from "@/lib/reddit/oauth";
 
+function getSafeRedirectPath(value: string | null | undefined, fallback: string) {
+  if (!value) return fallback;
+  if (!value.startsWith("/")) return fallback;
+  if (value.startsWith("//")) return fallback;
+  return value;
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const state = searchParams.get("state");
@@ -47,7 +54,9 @@ export async function GET(request: Request) {
 
     await markOAuthStateUsed(stateRow.id);
 
-    return NextResponse.redirect(new URL(`/clients/${stateRow.clientId}?connected=1`, request.url));
+    const fallbackPath = `/clients/${stateRow.clientId}?connected=1`;
+    const redirectPath = getSafeRedirectPath(stateRow.redirectTo, fallbackPath);
+    return NextResponse.redirect(new URL(redirectPath, request.url));
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });

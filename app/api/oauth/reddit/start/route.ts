@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const stateRow = await createOAuthState(clientId);
+    const stateRow = await createOAuthState(clientId, { source: "admin", redirectTo: null });
     const authorizeUrl = buildRedditAuthorizeUrl(stateRow.state);
     return NextResponse.redirect(authorizeUrl);
   } catch (error) {

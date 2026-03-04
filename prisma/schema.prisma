@@ -85,6 +85,8 @@ model OAuthState {
   clientId  String
   client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   state     String   @unique
+  source    String   @default("admin")
+  redirectTo String?
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime @default(now())

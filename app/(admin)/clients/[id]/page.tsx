@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { createClientConnectInviteToken } from "@/lib/oauth/clientInvite";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,13 @@ export default async function ClientDetailPage({
   if (!client) {
     notFound();
   }
+
+  const inviteToken = createClientConnectInviteToken(client.id);
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "");
+  const connectPath = `/connect/${inviteToken}`;
+  const shareableConnectLink = baseUrl ? `${baseUrl}${connectPath}` : connectPath;
 
   return (
     <main className="container">
@@ -55,6 +63,13 @@ export default async function ClientDetailPage({
           <a className="buttonLink" href={`/api/oauth/reddit/start?clientId=${client.id}`}>
             {client.redditUsername ? "Reconnect Reddit" : "Connect Reddit"}
           </a>
+          <label htmlFor="clientConnectLink" className="compact">
+            Client-only connect link
+          </label>
+          <input id="clientConnectLink" readOnly value={shareableConnectLink} />
+          <p className="muted compact">
+            Share this link with the client. It only allows Reddit authorization.
+          </p>
           <p className="muted compact">
             Token last updated:{" "}
             {client.redditTokenUpdatedAt ? client.redditTokenUpdatedAt.toISOString() : "Never"}

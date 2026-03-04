@@ -29,11 +29,16 @@ function requiredEnv(name: string) {
   return value;
 }
 
-export async function createOAuthState(clientId: string): Promise<OAuthState> {
+export async function createOAuthState(
+  clientId: string,
+  options?: { source?: string; redirectTo?: string | null },
+): Promise<OAuthState> {
   return prisma.oAuthState.create({
     data: {
       clientId,
       state: crypto.randomBytes(24).toString("hex"),
+      source: options?.source ?? "admin",
+      redirectTo: options?.redirectTo ?? null,
       expiresAt: new Date(Date.now() + OAUTH_STATE_TTL_MS),
     },
   });
