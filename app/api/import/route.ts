@@ -11,6 +11,12 @@ const requestSchema = z.object({
   url: z.string().url(),
 });
 
+function extractTermsRelativePath(html: string) {
+  const ngClickMatch = html.match(/show_terms\(\s*['"]([^'"]+)['"]/i);
+  if (!ngClickMatch?.[1]) return null;
+  return ngClickMatch[1].trim();
+}
+
 async function fetchHtml(url: string): Promise<string> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -55,7 +61,26 @@ export async function POST(request: Request) {
   try {
     const targetUrl = new URL(url);
     const html = await fetchHtml(targetUrl.toString());
-    const result = await runAuctionImport(targetUrl, html);
+    const importWarnings: string[] = [];
+    let mergedHtml = html;
+
+    const termsPath = extractTermsRelativePath(html);
+    if (termsPath) {
+      try {
+        const termsUrl = new URL(termsPath, targetUrl);
+        const termsHtml = await fetchHtml(termsUrl.toString());
+        mergedHtml += `\n<!-- TERMS_HTML_BEGIN -->\n${termsHtml}\n<!-- TERMS_HTML_END -->`;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "unknown error";
+        importWarnings.push(`Could not fetch Terms & Conditions page: ${message}`);
+      }
+    }
+
+    const result = await runAuctionImport(targetUrl, mergedHtml);
+    if (importWarnings.length > 0) {
+      result.warnings = [...importWarnings, ...result.warnings];
+      result.confidence = Math.max(10, result.confidence - 10);
+    }
 
     await prisma.importRun.create({
       data: {
