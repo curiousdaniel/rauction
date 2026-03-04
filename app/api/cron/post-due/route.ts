@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { processDueAuctions } from "@/lib/cron/processDueAuctions";
 
 function isAuthorized(request: Request) {
-  const expectedSecret = process.env.CRON_SECRET || process.env.CRON_TOKEN;
+  const expectedSecret = process.env.CRON_SECRET;
   if (!expectedSecret) {
     // If no secret is configured, allow requests that Vercel marks as cron.
     return request.headers.get("x-vercel-cron") === "1";
